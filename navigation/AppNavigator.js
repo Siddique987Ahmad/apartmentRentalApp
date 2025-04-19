@@ -8,6 +8,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ApartmentListScreen from '../screens/ApartmentListScreen';
 import CreateApartmentScreen from '../screens/CreateApartmentScreen';
+import UpdateApartmentScreen from '../screens/UpdateApartmentScreen';
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
@@ -25,6 +26,7 @@ const AppNavigator = () => {
         )}
         <Stack.Screen name="Apartment" component={ApartmentListScreen}/>
         <Stack.Screen name="CreateApartment" component={CreateApartmentScreen}/>
+        <Stack.Screen name="UpdateApartment" component={UpdateApartmentScreen}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -7,6 +7,7 @@ import {
   FlatList,
   TextInput,
   Modal,
+  Alert,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {logout} from '../redux/auth/authSlice';
@@ -14,6 +15,7 @@ import {useFocusEffect} from '@react-navigation/native';
 import {
   fetchApartments,
   fetchFilteredApartments,
+  deleteApartment,
 } from '../redux/apartment/apartmentSlice';
 import Slider from '@react-native-community/slider';
 
@@ -24,7 +26,7 @@ const HomeScreen = ({navigation}) => {
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [minPrice, setMinPrice] = useState(500);
-  const [maxPrice, setMaxPrice] = useState(5000);
+  const [maxPrice, setMaxPrice] = useState(50000);
   const [location, setLocation] = useState('');
 
   const handleLogout = () => {
@@ -45,6 +47,22 @@ const HomeScreen = ({navigation}) => {
     dispatch(fetchFilteredApartments({minPrice, maxPrice, location}));
     setFilterModalVisible(false);
   };
+  const handleDelete = (apartmentId) => {
+    Alert.alert(
+      "Delete Apartment",
+      "Are you sure you want to delete this apartment?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            dispatch(deleteApartment(apartmentId));
+          }
+        }
+      ]
+    );
+  };
 
   const renderItem = ({item}) => (
     <View style={styles.apartmentCard}>
@@ -53,6 +71,21 @@ const HomeScreen = ({navigation}) => {
       <Text style={styles.apartmentText}>Location: {item.location}</Text>
      <Text style={styles.apartmentText}>AreaSize: {item.areaSize}</Text>
      <Text style={styles.apartmentText}>Price: ${item.pricePerMonth}/mo</Text>
+     {user?.role === 'realtor' && (
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={[styles.editButton, {backgroundColor: '#6a11cb'}]}
+          onPress={() => navigation.navigate('UpdateApartment', {apartment: item})}>
+          <Text style={styles.buttonText}>Edit</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.deleteButton, {backgroundColor: '#ff4d4d'}]}
+          onPress={() => handleDelete(item._id)}>
+          <Text style={styles.buttonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    )}
     </View>
   );
 
@@ -76,7 +109,7 @@ const HomeScreen = ({navigation}) => {
             <Slider
               style={{width: '100%', height: 40}}
               minimumValue={500}
-              maximumValue={5000}
+              maximumValue={50000}
               step={100}
               value={minPrice}
               onValueChange={value => setMinPrice(value)}
@@ -86,7 +119,7 @@ const HomeScreen = ({navigation}) => {
             <Slider
               style={{width: '100%', height: 40}}
               minimumValue={500}
-              maximumValue={5000}
+              maximumValue={50000}
               step={100}
               value={maxPrice}
               onValueChange={value => setMaxPrice(value)}
@@ -232,6 +265,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 5,
   },
+  actionRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 10,
+},
+editButton: {
+  flex: 1,
+  marginRight: 5,
+  padding: 10,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+deleteButton: {
+  flex: 1,
+  marginLeft: 5,
+  padding: 10,
+  borderRadius: 8,
+  alignItems: 'center',
+},
+buttonText: {
+  color: '#fff',
+  fontWeight: 'bold',
+},
+
 });
 
 export default HomeScreen;

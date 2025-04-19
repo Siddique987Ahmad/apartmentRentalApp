@@ -9,7 +9,7 @@ export const fetchApartments = createAsyncThunk(
       const token = await AsyncStorage.getItem('userToken');
       console.log("token", token);
 
-      const response = await axios.get('http://192.168.70.170:4001/api/apartment/getallapartments', {
+      const response = await axios.get('http://192.168.70.67:4001/api/apartment/getallapartments', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -35,7 +35,7 @@ export const fetchFilteredApartments = createAsyncThunk(
     try {
       const token = await AsyncStorage.getItem('userToken');
 
-      const response = await axios.get('http://192.168.70.170:4001/api/apartment/getfilteredapartments', {
+      const response = await axios.get('http://192.168.70.67:4001/api/apartment/getfilteredapartments', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -78,6 +78,53 @@ export const createApartment = createAsyncThunk(
         );
       }
     }
+  );
+  export const updateApartment = createAsyncThunk(
+    'apartment/updateApartment',
+    async ({ apartmentId, updatedData }, thunkAPI) => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+  
+        const response = await axios.put(
+          `http://192.168.70.67:4001/api/apartment/updateapartment/${apartmentId}`,
+          updatedData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+         console.log("data update",response.data)
+        return response.data; // the updated apartment
+      } catch (error) {
+        console.error("Error updating apartment:", error);
+        return thunkAPI.rejectWithValue(
+          error.response?.data?.message || 'Failed to update apartment'
+        );
+      }
+    }
+  );
+  export const deleteApartment = createAsyncThunk(
+    'apartment/deleteApartment',
+    async (apartmentId, thunkAPI) => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        const response = await axios.delete(
+          `http://192.168.70.67:4001/api/apartment/deleteapartment/${apartmentId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        return { apartmentId };
+      } catch (error) {
+        console.error("Error deleting apartment:", error);
+        return thunkAPI.rejectWithValue(
+          error.response?.data?.message || "Failed to delete apartment"
+        );
+      }
+    }
   );  
 const apartmentSlice = createSlice({
   name: 'apartment',
@@ -115,7 +162,35 @@ const apartmentSlice = createSlice({
       .addCase(fetchFilteredApartments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+      })
+      .addCase(updateApartment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })      
+      .addCase(updateApartment.fulfilled, (state, action) => {
+        const updatedApartment = action.payload;
+        state.apartments = state.apartments.map((apt) =>
+          apt._id === updatedApartment._id ? updatedApartment : apt
+        );
+      })
+      .addCase(updateApartment.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      .addCase(deleteApartment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteApartment.fulfilled, (state, action) => {
+        state.loading = false;
+        const { apartmentId } = action.payload;
+        state.apartments = state.apartments.filter(
+          (apt) => apt._id !== apartmentId
+        );
+      })
+      .addCase(deleteApartment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });      
   },
 });
 
