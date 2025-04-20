@@ -101,3 +101,45 @@ const styles = StyleSheet.create({
 });
 
 export default ApartmentListScreen;
+// import React, { useEffect } from 'react';
+// import { View, FlatList, ActivityIndicator,Text } from 'react-native';
+// import { useDispatch, useSelector } from 'react-redux';
+// import { fetchApartments } from '../redux/apartment/apartmentSlice';
+// import { ApartmentCard } from '../components/apartmentComponents';
+// import { commonStyles } from '../components/apartmentStyles';
+
+// const ApartmentListScreen = () => {
+//   const dispatch = useDispatch();
+//   const { apartments, loading, error } = useSelector(state => state.apartment);
+
+//   useEffect(() => {
+//     dispatch(fetchApartments());
+//   }, [dispatch]);
+
+//   if (loading) {
+//     return (
+//       <View style={commonStyles.loadingContainer}>
+//         <ActivityIndicator size="large" color="#6a11cb" />
+//       </View>
+//     );
+//   }
+
+//   if (error) {
+//     return (
+//       <View style={commonStyles.loadingContainer}>
+//         <Text style={commonStyles.errorText}>{error}</Text>
+//       </View>
+//     );
+//   }
+
+//   return (
+//     <FlatList
+//       data={apartments}
+//       keyExtractor={item => item._id}
+//       renderItem={({ item }) => <ApartmentCard item={item} />}
+//       contentContainerStyle={commonStyles.container}
+//     />
+//   );
+// };
+
+// export default ApartmentListScreen;

@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useState, useMemo} from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   Alert,
+  Image,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {logout} from '../redux/auth/authSlice';
@@ -19,79 +20,103 @@ import {
 } from '../redux/apartment/apartmentSlice';
 import Slider from '@react-native-community/slider';
 
+// Extract constants for better maintainability
+const MIN_PRICE = 500;
+const MAX_PRICE = 5000;
+const BASE_IMAGE_URL = 'http://192.168.70.212:4001';
+
 const HomeScreen = ({navigation}) => {
   const dispatch = useDispatch();
   const {user} = useSelector(state => state.auth);
   const {apartments} = useSelector(state => state.apartment);
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [minPrice, setMinPrice] = useState(500);
-  const [maxPrice, setMaxPrice] = useState(50000);
+  const [minPrice, setMinPrice] = useState(MIN_PRICE);
+  const [maxPrice, setMaxPrice] = useState(MAX_PRICE);
   const [location, setLocation] = useState('');
 
-  const handleLogout = () => {
-    dispatch(logout());
-  };
+  const handleLogout = () => dispatch(logout());
 
-  useFocusEffect(
-    useCallback(() => {
-      if (user?.role === 'realtor') {
-        dispatch(fetchApartments({role: 'realtor', userId: user._id}));
-      } else {
-        dispatch(fetchApartments({role: 'user'}));
-      }
-    }, [dispatch, user?.role, user?._id]),
-  );
+  // Memoized fetch logic based on user role
+  const fetchData = useCallback(() => {
+    if (user?.role === 'realtor') {
+      dispatch(fetchApartments({role: 'realtor', userId: user._id}));
+    } else {
+      dispatch(fetchApartments({role: 'user'}));
+    }
+  }, [dispatch, user?.role, user?._id]);
+
+  useFocusEffect(fetchData);
 
   const handleFilter = () => {
     dispatch(fetchFilteredApartments({minPrice, maxPrice, location}));
     setFilterModalVisible(false);
   };
-  const handleDelete = (apartmentId) => {
-    Alert.alert(
-      "Delete Apartment",
-      "Are you sure you want to delete this apartment?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            dispatch(deleteApartment(apartmentId));
-          }
-        }
-      ]
-    );
-  };
 
-  const renderItem = ({item}) => (
-    <View style={styles.apartmentCard}>
-      <Text style={styles.apartmentText}>{item.description}</Text>
-      <Text style={styles.apartmentText}>Rooms: {item.rooms}</Text>
-      <Text style={styles.apartmentText}>Location: {item.location}</Text>
-     <Text style={styles.apartmentText}>AreaSize: {item.areaSize}</Text>
-     <Text style={styles.apartmentText}>Price: ${item.pricePerMonth}/mo</Text>
-     {user?.role === 'realtor' && (
-      <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={[styles.editButton, {backgroundColor: '#6a11cb'}]}
-          onPress={() => navigation.navigate('UpdateApartment', {apartment: item})}>
-          <Text style={styles.buttonText}>Edit</Text>
-        </TouchableOpacity>
+  const handleDelete = useCallback(
+    apartmentId => {
+      Alert.alert(
+        'Delete Apartment',
+        'Are you sure you want to delete this apartment?',
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => dispatch(deleteApartment(apartmentId)),
+          },
+        ],
+      );
+    },
+    [dispatch],
+  );
 
-        <TouchableOpacity
-          style={[styles.deleteButton, {backgroundColor: '#ff4d4d'}]}
-          onPress={() => handleDelete(item._id)}>
-          <Text style={styles.buttonText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    )}
-    </View>
+  // Memoized apartment render item
+  const renderItem = useMemo(
+    () =>
+      ({item}) =>
+        (
+          <View style={styles.apartmentCard}>
+            {item.pictures?.[0] && (
+              <Image
+                source={{uri: `${BASE_IMAGE_URL}${item.pictures[0]}`}}
+                style={styles.apartmentImage}
+                resizeMode="cover"
+              />
+            )}
+            <Text style={styles.apartmentText}>
+              Description: {item.description}
+            </Text>
+            <Text style={styles.apartmentText}>Rooms: {item.rooms}</Text>
+            <Text style={styles.apartmentText}>Location: {item.location}</Text>
+            <Text style={styles.apartmentText}>AreaSize: {item.areaSize}</Text>
+            <Text style={styles.apartmentText}>
+              Price: ${item.pricePerMonth}/mo
+            </Text>
+
+            {user?.role === 'realtor' && (
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.editButton]}
+                  onPress={() =>
+                    navigation.navigate('UpdateApartment', {apartment: item})
+                  }>
+                  <Text style={styles.buttonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDelete(item._id)}>
+                  <Text style={styles.buttonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        ),
+    [handleDelete, navigation, user?.role],
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Apartments</Text>
         <TouchableOpacity onPress={() => setFilterModalVisible(true)}>
@@ -99,83 +124,107 @@ const HomeScreen = ({navigation}) => {
         </TouchableOpacity>
       </View>
 
-      {/* Filter Modal */}
-      <Modal visible={filterModalVisible} animationType="slide" transparent>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Filter Apartments</Text>
+      <FilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        onFilter={handleFilter}
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        onMinPriceChange={setMinPrice}
+        onMaxPriceChange={setMaxPrice}
+        location={location}
+        onLocationChange={setLocation}
+      />
 
-            <Text>Price Range: ${minPrice} - ${maxPrice}</Text>
-            <Slider
-              style={{width: '100%', height: 40}}
-              minimumValue={500}
-              maximumValue={50000}
-              step={100}
-              value={minPrice}
-              onValueChange={value => setMinPrice(value)}
-              minimumTrackTintColor="#6a11cb"
-              maximumTrackTintColor="#ccc"
-            />
-            <Slider
-              style={{width: '100%', height: 40}}
-              minimumValue={500}
-              maximumValue={50000}
-              step={100}
-              value={maxPrice}
-              onValueChange={value => setMaxPrice(value)}
-              minimumTrackTintColor="#6a11cb"
-              maximumTrackTintColor="#ccc"
-            />
-
-            <TextInput
-              placeholder="Search Location"
-              value={location}
-              onChangeText={setLocation}
-              style={styles.input}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, {backgroundColor: '#ccc'}]}
-                onPress={() => setFilterModalVisible(false)}>
-                <Text>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, {backgroundColor: '#6a11cb'}]}
-                onPress={handleFilter}>
-                <Text style={{color: '#fff'}}>Apply Filters</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {user?.role === 'realtor' ? (
+      {(user?.role === 'realtor' && (
         <>
           <TouchableOpacity
-            style={styles.logoutButton}
+            style={styles.primaryButton}
             onPress={() => navigation.navigate('CreateApartment')}>
-            <Text style={styles.logoutText}>Create Apartment</Text>
+            <Text style={styles.buttonText}>Create Apartment</Text>
           </TouchableOpacity>
           <Text style={styles.listTitle}>Your Apartments</Text>
         </>
-      ) : (
-        <Text style={styles.listTitle}>Available Apartments</Text>
-      )}
+      )) || <Text style={styles.listTitle}>Available Apartments</Text>}
 
       <FlatList
         data={apartments}
         keyExtractor={item => item._id}
         renderItem={renderItem}
-        contentContainerStyle={{paddingBottom: 100}}
+        contentContainerStyle={styles.listContent}
       />
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
+      <TouchableOpacity style={styles.secondaryButton} onPress={handleLogout}>
+        <Text style={styles.secondaryButtonText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
 };
+
+// Extracted Modal component for better readability
+const FilterModal = ({
+  visible,
+  onClose,
+  onFilter,
+  minPrice,
+  maxPrice,
+  onMinPriceChange,
+  onMaxPriceChange,
+  location,
+  onLocationChange,
+}) => (
+  <Modal visible={visible} animationType="slide" transparent>
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Filter Apartments</Text>
+        <Text>
+          Price Range: ${minPrice} - ${maxPrice}
+        </Text>
+
+        <Slider
+          style={styles.slider}
+          minimumValue={MIN_PRICE}
+          maximumValue={MAX_PRICE}
+          step={100}
+          value={minPrice}
+          onValueChange={onMinPriceChange}
+          minimumTrackTintColor="#6a11cb"
+          maximumTrackTintColor="#ccc"
+        />
+        <Slider
+          style={styles.slider}
+          minimumValue={MIN_PRICE}
+          maximumValue={MAX_PRICE}
+          step={100}
+          value={maxPrice}
+          onValueChange={onMaxPriceChange}
+          minimumTrackTintColor="#6a11cb"
+          maximumTrackTintColor="#ccc"
+        />
+
+        <TextInput
+          placeholder="Search Location"
+          value={location}
+          onChangeText={onLocationChange}
+          style={styles.input}
+        />
+
+        <View style={styles.modalButtons}>
+          <TouchableOpacity
+            style={[styles.modalButton, styles.cancelButton]}
+            onPress={onClose}>
+            <Text>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modalButton, styles.applyButton]}
+            onPress={onFilter}>
+            <Text style={styles.buttonText}>Apply Filters</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -201,15 +250,25 @@ const styles = StyleSheet.create({
   filterIcon: {
     fontSize: 22,
   },
-  logoutButton: {
-    backgroundColor: '#fff',
+  primaryButton: {
+    //backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
+    backgroundColor: 'black',
+    //color: '#6a11cb',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#fff',
     padding: 12,
     borderRadius: 10,
     marginTop: 10,
   },
-  logoutText: {
+  secondaryButtonText: {
     fontSize: 16,
-    color: '#6a11cb',
+    color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -225,8 +284,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
   },
+  apartmentImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
   apartmentText: {
     color: '#333',
+    marginVertical: 2,
   },
   input: {
     borderWidth: 1,
@@ -253,6 +319,10 @@ const styles = StyleSheet.create({
     color: '#6a11cb',
     textAlign: 'center',
   },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -265,30 +335,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 5,
   },
+  cancelButton: {
+    backgroundColor: '#ccc',
+  },
+  applyButton: {
+    backgroundColor: '#6a11cb',
+  },
   actionRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginTop: 10,
-},
-editButton: {
-  flex: 1,
-  marginRight: 5,
-  padding: 10,
-  borderRadius: 8,
-  alignItems: 'center',
-},
-deleteButton: {
-  flex: 1,
-  marginLeft: 5,
-  padding: 10,
-  borderRadius: 8,
-  alignItems: 'center',
-},
-buttonText: {
-  color: '#fff',
-  fontWeight: 'bold',
-},
-
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  actionButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editButton: {
+    backgroundColor: '#6a11cb',
+    marginRight: 5,
+  },
+  deleteButton: {
+    backgroundColor: '#ff4d4d',
+    marginLeft: 5,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    //color: '#6a11cb',
+    //fontSize:20,
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
 });
 
 export default HomeScreen;

@@ -9,7 +9,7 @@ export const fetchApartments = createAsyncThunk(
       const token = await AsyncStorage.getItem('userToken');
       console.log("token", token);
 
-      const response = await axios.get('http://192.168.70.67:4001/api/apartment/getallapartments', {
+      const response = await axios.get('http://192.168.70.212:4001/api/apartment/getallapartments', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -19,7 +19,7 @@ export const fetchApartments = createAsyncThunk(
         },
       });
       console.log("API Response Data:", response.data);  // Add this line
-      console.log("Fetched Apartments:", response.data.allApartments);
+      //console.log("Fetched Apartments:", response.data.allApartments);
       return response.data;
     } catch (error) {
       console.error("Error fetching apartments", error);
@@ -35,7 +35,7 @@ export const fetchFilteredApartments = createAsyncThunk(
     try {
       const token = await AsyncStorage.getItem('userToken');
 
-      const response = await axios.get('http://192.168.70.67:4001/api/apartment/getfilteredapartments', {
+      const response = await axios.get('http://192.168.70.212:4001/api/apartment/getfilteredapartments', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -81,17 +81,24 @@ export const createApartment = createAsyncThunk(
   );
   export const updateApartment = createAsyncThunk(
     'apartment/updateApartment',
-    async ({ apartmentId, updatedData }, thunkAPI) => {
+    async ({ apartmentId, updatedData,isFormData=false }, thunkAPI) => {
       try {
         const token = await AsyncStorage.getItem('userToken');
-  
-        const response = await axios.put(
-          `http://192.168.70.67:4001/api/apartment/updateapartment/${apartmentId}`,
+        console.log("token",token)
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          ...(isFormData
+            ? { 'Content-Type': 'multipart/form-data' }
+            : { 'Content-Type': 'application/json' }),
+        };
+         const response = await axios.put(
+          `http://192.168.70.212:4001/api/apartment/updateapartment/${apartmentId}`,
           updatedData,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers
+            // headers: {
+            //   Authorization: `Bearer ${token}`,
+            // },
           }
         );
          console.log("data update",response.data)
@@ -110,7 +117,7 @@ export const createApartment = createAsyncThunk(
       try {
         const token = await AsyncStorage.getItem('userToken');
         const response = await axios.delete(
-          `http://192.168.70.67:4001/api/apartment/deleteapartment/${apartmentId}`,
+          `http://192.168.70.212:4001/api/apartment/deleteapartment/${apartmentId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

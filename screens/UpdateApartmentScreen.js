@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,14 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import {useDispatch} from 'react-redux';
-import {updateApartment} from '../redux/apartment/apartmentSlice'; // You will create this action
+import {updateApartment} from '../redux/apartment/apartmentSlice';
+import {launchImageLibrary} from 'react-native-image-picker';
 
 const UpdateApartmentScreen = ({route, navigation}) => {
-  //   const navigation = useNavigation();
-  //   const route = useRoute();
-  const {apartment} = route.params; // Get the apartment details passed from HomeScreen
+  const {apartment} = route.params;
+  const dispatch = useDispatch();
 
   const [formData, setFormData] = useState({
     description: apartment.description,
@@ -22,81 +23,135 @@ const UpdateApartmentScreen = ({route, navigation}) => {
     areaSize: apartment.areaSize.toString(),
     pricePerMonth: apartment.pricePerMonth.toString(),
   });
+  
+  const [image, setImage] = useState(null);
 
-  const dispatch = useDispatch();
+  const handleSelectImage = useCallback(() => {
+    const options = {
+      mediaType: 'photo',
+      quality: 1,
+    };
+    
+    launchImageLibrary(options, (response) => {
+      if (response.didCancel) return;
+      if (response.errorCode) {
+        console.log('ImagePicker Error: ', response.errorMessage);
+        return;
+      }
+      setImage(response.assets[0]);
+    });
+  }, []);
 
-  const handleUpdate = async () => {
+  const handleChange = (field, value) => {
+    setFormData(prev => ({...prev, [field]: value}));
+  };
+
+  const handleUpdate = useCallback(async () => {
+    const data = new FormData();
+    
+    // Append form fields
+    data.append('description', formData.description);
+    data.append('location', formData.location);
+    data.append('rooms', Number(formData.rooms));
+    data.append('areaSize', Number(formData.areaSize));
+    data.append('pricePerMonth', Number(formData.pricePerMonth));
+
+    // Append image if selected
+    if (image) {
+      data.append('images', {
+        uri: image.uri,
+        name: image.fileName || 'photo.jpg',
+        type: image.type || 'image/jpeg',
+      });
+    }
+
     try {
-      await dispatch(
-        updateApartment({
-          apartmentId: apartment._id,
-          updatedData: {
-            ...formData,
-            rooms: Number(formData.rooms),
-            areaSize: Number(formData.areaSize),
-            pricePerMonth: Number(formData.pricePerMonth),
-          },
-        }),
-      );
-      Alert.alert('Success', 'Apartment updated successfully');
-      navigation.goBack(); // Go back to HomeScreen
+      const result = await dispatch(updateApartment({
+        apartmentId: apartment._id,
+        updatedData: data,
+        isFormData: true,
+      }));
+      
+      if (updateApartment.fulfilled.match(result)) {
+        Alert.alert('Success', 'Apartment updated successfully');
+        navigation.goBack();
+      } else {
+        Alert.alert('Error', result.payload || 'Failed to update apartment');
+      }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Failed to update apartment');
+      Alert.alert('Error', 'An unexpected error occurred');
     }
-  };
+  }, [formData, image, dispatch, apartment._id, navigation]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Description</Text>
-      <TextInput
-        style={styles.input}
+      <FormField
+        label="Description"
         value={formData.description}
-        onChangeText={text => setFormData({...formData, description: text})}
+        onChangeText={(text) => handleChange('description', text)}
         placeholder="Description"
       />
-      <Text style={styles.label}>Location</Text>
-
-      <TextInput
-        style={styles.input}
+      
+      <FormField
+        label="Location"
         value={formData.location}
-        onChangeText={text => setFormData({...formData, location: text})}
+        onChangeText={(text) => handleChange('location', text)}
         placeholder="Location"
       />
-      <Text style={styles.label}>Price Per Month</Text>
-
-      <TextInput
-        style={styles.input}
+      
+      <FormField
+        label="Price Per Month"
         value={formData.pricePerMonth}
-        onChangeText={text => setFormData({...formData, pricePerMonth: text})}
+        onChangeText={(text) => handleChange('pricePerMonth', text)}
         placeholder="Price per Month"
         keyboardType="numeric"
       />
-      <Text style={styles.label}>Area Size (sqft)</Text>
-
-      <TextInput
-        style={styles.input}
+      
+      <FormField
+        label="Area Size (sqft)"
         value={formData.areaSize}
-        onChangeText={text => setFormData({...formData, areaSize: text})}
+        onChangeText={(text) => handleChange('areaSize', text)}
         placeholder="Area Size"
         keyboardType="numeric"
       />
-      <Text style={styles.label}>Rooms</Text>
-
-      <TextInput
-        style={styles.input}
+      
+      <FormField
+        label="Rooms"
         value={formData.rooms}
-        onChangeText={text => setFormData({...formData, rooms: text})}
-        placeholder="Area Size"
+        onChangeText={(text) => handleChange('rooms', text)}
+        placeholder="Rooms"
         keyboardType="numeric"
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleUpdate}>
-        <Text style={styles.buttonText}>Update</Text>
+      <TouchableOpacity style={styles.imageButton} onPress={handleSelectImage}>
+        <Text style={styles.imageButtonText}>
+          {image ? 'Change Image' : 'Select Image'}
+        </Text>
+      </TouchableOpacity>
+
+      {image && (
+        <Image
+          source={{uri: image.uri}}
+          style={styles.image}
+          resizeMode="cover"
+        />
+      )}
+
+      <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
+        <Text style={styles.updateButtonText}>Update</Text>
       </TouchableOpacity>
     </View>
   );
 };
+
+// Reusable form field component
+const FormField = ({label, ...props}) => (
+  <>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput style={styles.input} {...props} />
+  </>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -104,25 +159,44 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#fff',
   },
-  label: { fontWeight: 'bold', marginTop: 10 },
-
+  label: {
+    fontWeight: 'bold',
+    marginTop: 10,
+    color: '#333'
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#ddd',
     padding: 12,
     marginBottom: 16,
     borderRadius: 8,
+    backgroundColor: '#f9f9f9'
   },
-  button: {
+  imageButton: {
+    marginVertical: 10,
+  },
+  imageButtonText: {
+    color: '#6a11cb',
+    fontWeight: '500'
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 16
+  },
+  updateButton: {
     backgroundColor: '#6a11cb',
-    padding: 12,
+    padding: 14,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 10
   },
-  buttonText: {
+  updateButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-  },
+    fontSize: 16
+  }
 });
 
 export default UpdateApartmentScreen;
