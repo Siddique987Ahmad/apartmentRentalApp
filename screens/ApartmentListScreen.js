@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, {useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,22 +7,22 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchApartments } from '../redux/apartment/apartmentSlice'; 
+import {useDispatch, useSelector} from 'react-redux';
+import {fetchApartments} from '../redux/apartment/apartmentSlice';
 
 const ApartmentListScreen = () => {
   const dispatch = useDispatch();
-  const { apartments, loading, error } = useSelector((state) => state.apartment);
+  const {apartments, loading, error} = useSelector(state => state.apartment);
 
   useEffect(() => {
     dispatch(fetchApartments());
   }, [dispatch]);
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({item}) => (
     <View style={styles.card}>
       {item.pictures.length > 0 && (
         <Image
-          source={{ uri: `http://192.168.70.128:4001${item.pictures[0]}` }}
+          source={{uri: `http://192.168.70.128:4001${item.pictures[0]}`}}
           style={styles.image}
         />
       )}
@@ -46,7 +46,7 @@ const ApartmentListScreen = () => {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: 'red' }}>{error}</Text>
+        <Text style={{color: 'red'}}>{error}</Text>
       </View>
     );
   }
@@ -55,7 +55,7 @@ const ApartmentListScreen = () => {
     <FlatList
       data={apartments}
       renderItem={renderItem}
-      keyExtractor={(item) => item._id}
+      keyExtractor={item => item._id}
       contentContainerStyle={styles.container}
     />
   );
@@ -101,45 +101,3 @@ const styles = StyleSheet.create({
 });
 
 export default ApartmentListScreen;
-// import React, { useEffect } from 'react';
-// import { View, FlatList, ActivityIndicator,Text } from 'react-native';
-// import { useDispatch, useSelector } from 'react-redux';
-// import { fetchApartments } from '../redux/apartment/apartmentSlice';
-// import { ApartmentCard } from '../components/apartmentComponents';
-// import { commonStyles } from '../components/apartmentStyles';
-
-// const ApartmentListScreen = () => {
-//   const dispatch = useDispatch();
-//   const { apartments, loading, error } = useSelector(state => state.apartment);
-
-//   useEffect(() => {
-//     dispatch(fetchApartments());
-//   }, [dispatch]);
-
-//   if (loading) {
-//     return (
-//       <View style={commonStyles.loadingContainer}>
-//         <ActivityIndicator size="large" color="#6a11cb" />
-//       </View>
-//     );
-//   }
-
-//   if (error) {
-//     return (
-//       <View style={commonStyles.loadingContainer}>
-//         <Text style={commonStyles.errorText}>{error}</Text>
-//       </View>
-//     );
-//   }
-
-//   return (
-//     <FlatList
-//       data={apartments}
-//       keyExtractor={item => item._id}
-//       renderItem={({ item }) => <ApartmentCard item={item} />}
-//       contentContainerStyle={commonStyles.container}
-//     />
-//   );
-// };
-
-// export default ApartmentListScreen;

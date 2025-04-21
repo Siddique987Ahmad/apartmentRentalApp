@@ -23,7 +23,7 @@ import Slider from '@react-native-community/slider';
 // Extract constants for better maintainability
 const MIN_PRICE = 500;
 const MAX_PRICE = 5000;
-const BASE_IMAGE_URL = 'http://192.168.70.212:4001';
+const BASE_IMAGE_URL = 'http://192.168.70.159:4001';
 
 const HomeScreen = ({navigation}) => {
   const dispatch = useDispatch();

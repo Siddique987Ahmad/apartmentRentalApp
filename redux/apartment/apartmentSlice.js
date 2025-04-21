@@ -2,137 +2,114 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import api from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BASE_URL = 'http://192.168.70.159:4001/api/apartment';
+
+// Utility function to get token
+const getAuthHeaders = async (isFormData = false) => {
+  const token = await AsyncStorage.getItem('userToken');
+  return {
+    Authorization: `Bearer ${token}`,
+    ...(isFormData ? { 'Content-Type': 'multipart/form-data' } : {}),
+  };
+};
+
+// Fetch all apartments
 export const fetchApartments = createAsyncThunk(
-  'apartment/fetchApartments',
+  'apartment/fetchAll',
   async ({ role, userId }, thunkAPI) => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      console.log("token", token);
-
-      const response = await axios.get('http://192.168.70.212:4001/api/apartment/getallapartments', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          role,
-          userId,
-        },
+      const headers = await getAuthHeaders();
+      const response = await axios.get(`${BASE_URL}/getallapartments`, {
+        headers,
+        params: { role, userId },
       });
-      console.log("API Response Data:", response.data);  // Add this line
-      //console.log("Fetched Apartments:", response.data.allApartments);
       return response.data;
     } catch (error) {
-      console.error("Error fetching apartments", error);
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || "Failed to fetch apartments"
+        error.response?.data?.message || 'Failed to fetch apartments'
       );
     }
   }
 );
+
+// Filter apartments
 export const fetchFilteredApartments = createAsyncThunk(
-  'apartment/fetchFilteredApartments',
+  'apartment/fetchFiltered',
   async ({ minPrice, maxPrice, location, search }, thunkAPI) => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-
-      const response = await axios.get('http://192.168.70.212:4001/api/apartment/getfilteredapartments', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        params: {
-          minPrice,
-          maxPrice,
-          location,
-          search,
-        },
+      const headers = await getAuthHeaders();
+      const response = await axios.get(`${BASE_URL}/getfilteredapartments`, {
+        headers,
+        params: { minPrice, maxPrice, location, search },
       });
-      console.log("filtered apartment data",response.data)
-      return response.data; // array of apartments
+      return response.data;
     } catch (error) {
-      console.error("Error filtering apartments:", error);
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || "Failed to filter apartments"
+        error.response?.data?.message || 'Failed to filter apartments'
       );
     }
   }
 );
 
+// Create apartment
 export const createApartment = createAsyncThunk(
-    'apartment/createApartment',
-    async (formData, thunkAPI) => {
-      try {
-        const res = await api.post('/apartment/createapartment', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        return res.data.newApartment;
-      } catch (error) {
-        console.log('CreateApartment Axios Error:', {
-          message: error.message,
-          responseData: error.response?.data,
-          status: error.response?.status,
-        });
-        return thunkAPI.rejectWithValue(
-          error.response?.data?.message || 'Failed to create apartment'
-        );
-      }
+  'apartment/create',
+  async (formData, thunkAPI) => {
+    try {
+      const res = await api.post('/apartment/createapartment', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return res.data.newApartment;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || 'Failed to create apartment'
+      );
     }
-  );
-  export const updateApartment = createAsyncThunk(
-    'apartment/updateApartment',
-    async ({ apartmentId, updatedData,isFormData=false }, thunkAPI) => {
-      try {
-        const token = await AsyncStorage.getItem('userToken');
-        console.log("token",token)
-        const headers = {
-          Authorization: `Bearer ${token}`,
-          ...(isFormData
-            ? { 'Content-Type': 'multipart/form-data' }
-            : { 'Content-Type': 'application/json' }),
-        };
-         const response = await axios.put(
-          `http://192.168.70.212:4001/api/apartment/updateapartment/${apartmentId}`,
-          updatedData,
-          {
-            headers
-            // headers: {
-            //   Authorization: `Bearer ${token}`,
-            // },
-          }
-        );
-         console.log("data update",response.data)
-        return response.data; // the updated apartment
-      } catch (error) {
-        console.error("Error updating apartment:", error);
-        return thunkAPI.rejectWithValue(
-          error.response?.data?.message || 'Failed to update apartment'
-        );
-      }
+  }
+);
+
+// Update apartment
+export const updateApartment = createAsyncThunk(
+  'apartment/update',
+  async ({ apartmentId, updatedData, isFormData = false }, thunkAPI) => {
+    try {
+      const headers = await getAuthHeaders(isFormData);
+      const response = await axios.put(
+        `${BASE_URL}/updateapartment/${apartmentId}`,
+        updatedData,
+        { headers }
+      );
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || 'Failed to update apartment'
+      );
     }
-  );
-  export const deleteApartment = createAsyncThunk(
-    'apartment/deleteApartment',
-    async (apartmentId, thunkAPI) => {
-      try {
-        const token = await AsyncStorage.getItem('userToken');
-        const response = await axios.delete(
-          `http://192.168.70.212:4001/api/apartment/deleteapartment/${apartmentId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        return { apartmentId };
-      } catch (error) {
-        console.error("Error deleting apartment:", error);
-        return thunkAPI.rejectWithValue(
-          error.response?.data?.message || "Failed to delete apartment"
-        );
-      }
+  }
+);
+
+// Delete apartment
+export const deleteApartment = createAsyncThunk(
+  'apartment/delete',
+  async (apartmentId, thunkAPI) => {
+    try {
+      const headers = await getAuthHeaders();
+      await axios.delete(`${BASE_URL}/deleteapartment/${apartmentId}`, {
+        headers,
+      });
+      return { apartmentId };
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || 'Failed to delete apartment'
+      );
     }
-  );  
+  }
+);
+
+// Slice
 const apartmentSlice = createSlice({
   name: 'apartment',
   initialState: {
@@ -143,6 +120,7 @@ const apartmentSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // Fetch All
       .addCase(fetchApartments.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -155,9 +133,8 @@ const apartmentSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(createApartment.fulfilled, (state, action) => {
-        state.apartments = [...state.apartments, action.payload];
-      })
+
+      // Filter
       .addCase(fetchFilteredApartments.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -170,34 +147,44 @@ const apartmentSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+
+      // Create
+      .addCase(createApartment.fulfilled, (state, action) => {
+        state.apartments.push(action.payload);
+      })
+
+      // Update
       .addCase(updateApartment.pending, (state) => {
         state.loading = true;
         state.error = null;
-      })      
+      })
       .addCase(updateApartment.fulfilled, (state, action) => {
-        const updatedApartment = action.payload;
+        state.loading = false;
+        const updated = action.payload;
         state.apartments = state.apartments.map((apt) =>
-          apt._id === updatedApartment._id ? updatedApartment : apt
+          apt._id === updated._id ? updated : apt
         );
       })
       .addCase(updateApartment.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload;
       })
+
+      // Delete
       .addCase(deleteApartment.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(deleteApartment.fulfilled, (state, action) => {
         state.loading = false;
-        const { apartmentId } = action.payload;
         state.apartments = state.apartments.filter(
-          (apt) => apt._id !== apartmentId
+          (apt) => apt._id !== action.payload.apartmentId
         );
       })
       .addCase(deleteApartment.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });      
+      });
   },
 });
 
